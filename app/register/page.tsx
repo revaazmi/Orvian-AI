@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function RegisterPage() {
@@ -11,14 +10,13 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
   const { status } = useSession()
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/")
+      window.location.href = "/"
     }
-  }, [status, router])
+  }, [status])
 
   if (status === "loading") {
     return (
@@ -52,7 +50,7 @@ export default function RegisterPage() {
         return
       }
 
-      router.replace("/login")
+      window.location.href = "/login"
     } catch {
       setError("Terjadi kesalahan server")
       setLoading(false)

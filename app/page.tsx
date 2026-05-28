@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Sidebar from "./components/Sidebar"
 import MessageList from "./components/MessageList"
 import ChatInput from "./components/ChatInput"
@@ -26,7 +25,6 @@ interface Message {
 
 export default function Home() {
   const { data: session, status } = useSession()
-  const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -37,7 +35,7 @@ export default function Home() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.replace("/login")
+      window.location.href = "/login"
       return
     }
     if (status !== "authenticated") return
@@ -47,7 +45,7 @@ export default function Home() {
     window.addEventListener("resize", check)
     loadSessions()
     return () => window.removeEventListener("resize", check)
-  }, [status, router])
+  }, [status])
 
   if (status !== "authenticated") {
     return null

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { signIn, useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export default function LoginPage() {
@@ -10,14 +9,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
 
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace("/")
+      window.location.href = "/"
     }
-  }, [status, router])
+  }, [status])
 
   if (status === "loading") {
     return (
@@ -46,7 +44,7 @@ export default function LoginPage() {
       setError("Email atau password salah")
       setLoading(false)
     } else {
-      router.replace("/")
+      window.location.href = "/"
     }
   }
 
