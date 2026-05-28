@@ -46,9 +46,12 @@ export async function addMessageToSession(
 ) {
   const session = await prisma.chatSession.findFirst({
     where: { id: sessionId, userId },
-    include: { messages: true },
   })
   if (!session) return null
+
+  const msgCount = await prisma.message.count({
+    where: { sessionId },
+  })
 
   const newMessage = await prisma.message.create({
     data: {
@@ -64,7 +67,7 @@ export async function addMessageToSession(
     data: { updatedAt: new Date() },
   })
 
-  if (session.messages.length === 0 && message.role === "user") {
+  if (msgCount === 0 && message.role === "user") {
     const title =
       message.content.slice(0, 30) +
       (message.content.length > 30 ? "..." : "")
@@ -78,39 +81,26 @@ export async function addMessageToSession(
 }
 
 export async function deleteSession(id: string, userId: string) {
-  const session = await prisma.chatSession.findFirst({
+  const result = await prisma.chatSession.deleteMany({
     where: { id, userId },
   })
-  if (!session) return false
-
-  await prisma.chatSession.delete({ where: { id } })
-  return true
+  return result.count > 0
 }
 
 export async function editSessionTitle(id: string, userId: string, newTitle: string) {
-  const session = await prisma.chatSession.findFirst({
+  const result = await prisma.chatSession.updateMany({
     where: { id, userId },
-  })
-  if (!session) return false
-
-  await prisma.chatSession.update({
-    where: { id },
     data: { title: newTitle, updatedAt: new Date() },
   })
-  return true
+  return result.count > 0
 }
 
 export async function pinSession(id: string, userId: string, isPinned: boolean) {
-  const session = await prisma.chatSession.findFirst({
+  const result = await prisma.chatSession.updateMany({
     where: { id, userId },
-  })
-  if (!session) return false
-
-  await prisma.chatSession.update({
-    where: { id },
     data: { isPinned, updatedAt: new Date() },
   })
-  return true
+  return result.count > 0
 }
 
 export function formatHistoryForAI(messages: Message[]) {

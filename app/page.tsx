@@ -73,26 +73,26 @@ export default function Home() {
   }
 
   const deleteSession = async (id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id))
     await fetch(`/api/sessions?id=${id}`, { method: "DELETE" })
-    await loadSessions()
   }
 
-  const editSessionTitle = async (id: string, newTitle: string) => {
-    await fetch("/api/sessions/edit", {
+  const editSessionTitle = (id: string, newTitle: string) => {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s))
+    fetch("/api/sessions/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, title: newTitle }),
     })
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s))
   }
 
-  const pinSession = async (id: string, isPinned: boolean) => {
-    await fetch("/api/sessions/pin", {
+  const pinSession = (id: string, isPinned: boolean) => {
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, isPinned } : s))
+    fetch("/api/sessions/pin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, isPinned }),
     })
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, isPinned } : s))
   }
 
   const sendMessage = async (message: string, imageBase64?: string) => {
