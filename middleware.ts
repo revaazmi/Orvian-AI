@@ -1,35 +1,34 @@
-import NextAuth from "next-auth"
-import authConfig from "@/auth.config"
 import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 
-const { auth } = NextAuth(authConfig)
+const authPaths = ["/login", "/register"]
 
-export default auth((req) => {
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  const isLoggedIn = !!req.auth
 
-  const publicPaths = ["/login", "/register"]
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p))
-  const isApiAuth = pathname.startsWith("/api/auth") || pathname.startsWith("/api/register")
-
-  if (isApiAuth) {
+  if (pathname.startsWith("/api/auth")) {
     return NextResponse.next()
   }
 
-  if (isLoggedIn && isPublic) {
+  const sessionToken =
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-next-auth.session-token")?.value
+  const isLoggedIn = !!sessionToken
+
+  if (isLoggedIn && authPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.redirect(new URL("/", req.nextUrl))
   }
 
-  if (!isLoggedIn && !isPublic && !pathname.startsWith("/api")) {
+  if (
+    !isLoggedIn &&
+    !authPaths.some((p) => pathname.startsWith(p)) &&
+    !pathname.startsWith("/api")
+  ) {
     return NextResponse.redirect(new URL("/login", req.nextUrl))
   }
 
-  if (!isLoggedIn && pathname.startsWith("/api")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
   return NextResponse.next()
-})
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
