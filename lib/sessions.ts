@@ -1,109 +1,118 @@
+import prisma from "@/lib/db"
+
 export interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  imageData?: string;
+  id: string
+  role: "user" | "assistant"
+  content: string
+  imageData?: string | null
 }
 
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: Message[];
-  updatedAt: Date;
-  isPinned?: boolean;
+export async function createNewSession(userId: string) {
+  const count = await prisma.chatSession.count({ where: { userId } })
+  const session = await prisma.chatSession.create({
+    data: {
+      title: `Chat Baru ${count + 1}`,
+      userId,
+    },
+    include: { messages: true },
+  })
+  return session
 }
 
-let sessions: ChatSession[] = [];
-let activeSessionId: string | null = null;
-
-export function createNewSession(): ChatSession {
-  const newSession: ChatSession = {
-    id: Date.now().toString(),
-    title: `Chat Baru ${sessions.length + 1}`,
-    messages: [],
-    updatedAt: new Date(),
-    isPinned: false,
-  };
-  sessions.unshift(newSession);
-  activeSessionId = newSession.id;
-  return newSession;
+export async function getAllSessions(userId: string) {
+  const sessions = await prisma.chatSession.findMany({
+    where: { userId },
+    orderBy: [
+      { isPinned: "desc" },
+      { updatedAt: "desc" },
+    ],
+    include: { messages: true },
+  })
+  return sessions
 }
 
-export function getAllSessions(): ChatSession[] {
-  return [...sessions].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return b.updatedAt.getTime() - a.updatedAt.getTime();
-  });
+export async function getSessionById(id: string, userId: string) {
+  const session = await prisma.chatSession.findFirst({
+    where: { id, userId },
+    include: { messages: true },
+  })
+  return session
 }
 
-export function getSessionById(id: string): ChatSession | undefined {
-  return sessions.find(s => s.id === id);
-}
-
-export function getActiveSession(): ChatSession | null {
-  return activeSessionId ? getSessionById(activeSessionId) || null : null;
-}
-
-export function setActiveSession(id: string): boolean {
-  const session = getSessionById(id);
-  if (session) {
-    activeSessionId = id;
-    return true;
-  }
-  return false;
-}
-
-export function addMessageToSession(
+export async function addMessageToSession(
   sessionId: string,
-  message: Omit<Message, "id">
-): Message | null {
-  const session = getSessionById(sessionId);
-  if (!session) return null;
+  userId: string,
+  message: { role: string; content: string; imageData?: string }
+) {
+  const session = await prisma.chatSession.findFirst({
+    where: { id: sessionId, userId },
+    include: { messages: true },
+  })
+  if (!session) return null
 
-  const newMessage: Message = { id: Date.now().toString(), ...message };
-  session.messages.push(newMessage);
-  session.updatedAt = new Date();
+  const newMessage = await prisma.message.create({
+    data: {
+      sessionId,
+      role: message.role,
+      content: message.content,
+      imageData: message.imageData,
+    },
+  })
 
-  if (session.messages.length === 1 && message.role === "user") {
-    const title = message.content.slice(0, 30) + (message.content.length > 30 ? "..." : "");
-    session.title = title;
+  await prisma.chatSession.update({
+    where: { id: sessionId },
+    data: { updatedAt: new Date() },
+  })
+
+  if (session.messages.length === 0 && message.role === "user") {
+    const title =
+      message.content.slice(0, 30) +
+      (message.content.length > 30 ? "..." : "")
+    await prisma.chatSession.update({
+      where: { id: sessionId },
+      data: { title },
+    })
   }
-  return newMessage;
+
+  return newMessage
 }
 
-export function deleteSession(id: string): boolean {
-  const index = sessions.findIndex(s => s.id === id);
-  if (index !== -1) {
-    sessions.splice(index, 1);
-    if (activeSessionId === id) {
-      activeSessionId = sessions[0]?.id || null;
-    }
-    return true;
-  }
-  return false;
+export async function deleteSession(id: string, userId: string) {
+  const session = await prisma.chatSession.findFirst({
+    where: { id, userId },
+  })
+  if (!session) return false
+
+  await prisma.chatSession.delete({ where: { id } })
+  return true
 }
 
-export function editSessionTitle(id: string, newTitle: string): boolean {
-  const session = getSessionById(id);
-  if (session) {
-    session.title = newTitle;
-    session.updatedAt = new Date();
-    return true;
-  }
-  return false;
+export async function editSessionTitle(id: string, userId: string, newTitle: string) {
+  const session = await prisma.chatSession.findFirst({
+    where: { id, userId },
+  })
+  if (!session) return false
+
+  await prisma.chatSession.update({
+    where: { id },
+    data: { title: newTitle, updatedAt: new Date() },
+  })
+  return true
 }
 
-export function pinSession(id: string, isPinned: boolean): boolean {
-  const session = getSessionById(id);
-  if (session) {
-    session.isPinned = isPinned;
-    session.updatedAt = new Date();
-    return true;
-  }
-  return false;
+export async function pinSession(id: string, userId: string, isPinned: boolean) {
+  const session = await prisma.chatSession.findFirst({
+    where: { id, userId },
+  })
+  if (!session) return false
+
+  await prisma.chatSession.update({
+    where: { id },
+    data: { isPinned, updatedAt: new Date() },
+  })
+  return true
 }
 
-export function formatHistoryForAI(messages: Message[]): Array<{ role: string; content: string }> {
-  return messages.map(m => ({ role: m.role, content: m.content }));
+export function formatHistoryForAI(messages: Message[]) {
+  return messages.map((m) => ({ role: m.role, content: m.content }))
 }

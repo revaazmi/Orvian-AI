@@ -5,24 +5,30 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
+    "groq-sdk": "^0.3.0",
+    "lucide-react": "^0.394.0",
     "next": "14.2.28",
+    "next-auth": "^5.0.0-beta.31",
+    "prisma": "^5.22.0",
     "react": "^18",
     "react-dom": "^18",
-    "groq-sdk": "^0.3.0",
     "react-markdown": "^9.0.1",
-    "lucide-react": "^0.394.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "tailwindcss": "^3.4.0",
-    "typescript": "^5",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38"
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5"
   }
 }

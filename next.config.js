@@ -3,6 +3,9 @@ const nextConfig = {
   images: {
     domains: [],
   },
+  experimental: {
+    serverComponentsExternalPackages: ["@prisma/client", "bcryptjs"],
+  },
 }
 
 module.exports = nextConfig

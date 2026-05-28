@@ -1,118 +1,132 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import Sidebar from "./components/Sidebar";
-import MessageList from "./components/MessageList";
-import ChatInput from "./components/ChatInput";
-import ModelSelector from "./components/ModelSelector";
-import { Menu } from "lucide-react";
-import { AVAILABLE_MODELS, ModelId } from "@/lib/models";
+import { useState, useEffect } from "react"
+import { useSession, signOut } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import Sidebar from "./components/Sidebar"
+import MessageList from "./components/MessageList"
+import ChatInput from "./components/ChatInput"
+import ModelSelector from "./components/ModelSelector"
+import { Menu, LogOut } from "lucide-react"
+import { AVAILABLE_MODELS, ModelId } from "@/lib/models"
 
 interface Session {
-  id: string;
-  title: string;
-  messages: Message[];
-  isPinned?: boolean;
+  id: string
+  title: string
+  messages: Message[]
+  isPinned?: boolean
 }
 
 interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  imageData?: string;
+  id: string
+  role: "user" | "assistant"
+  content: string
+  imageData?: string
 }
 
 export default function Home() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
-  const [selectedModel, setSelectedModel] = useState<ModelId>("llama-3.1-8b-instant");
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
+  const [selectedModel, setSelectedModel] = useState<ModelId>("llama-3.1-8b-instant")
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    loadSessions();
-    return () => window.removeEventListener("resize", check);
-  }, []);
+    if (status === "unauthenticated") {
+      router.replace("/login")
+      return
+    }
+    if (status !== "authenticated") return
+
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener("resize", check)
+    loadSessions()
+    return () => window.removeEventListener("resize", check)
+  }, [status, router])
+
+  if (status !== "authenticated") {
+    return null
+  }
 
   const loadSessions = async () => {
-    const res = await fetch("/api/sessions");
-    const data = await res.json();
-    setSessions(data.sessions);
-    setActiveId(data.activeSessionId);
-  };
+    const res = await fetch("/api/sessions")
+    const data = await res.json()
+    setSessions(data.sessions)
+    setActiveId(data.activeSessionId)
+  }
 
   const createSession = async () => {
-    const res = await fetch("/api/sessions", { method: "POST" });
-    const data = await res.json();
-    setSessions(data.sessions);
-    setActiveId(data.activeSessionId);
-    setMobileMenuOpen(false);
-  };
+    const res = await fetch("/api/sessions", { method: "POST" })
+    const data = await res.json()
+    setSessions(data.sessions)
+    setActiveId(data.activeSessionId)
+    setMobileMenuOpen(false)
+  }
 
   const selectSession = async (id: string) => {
-    await fetch(`/api/sessions/${id}`, { method: "PUT" });
-    setActiveId(id);
-    setMobileMenuOpen(false);
-  };
+    await fetch(`/api/sessions/${id}`, { method: "PUT" })
+    setActiveId(id)
+    setMobileMenuOpen(false)
+  }
 
   const deleteSession = async (id: string) => {
-    await fetch(`/api/sessions?id=${id}`, { method: "DELETE" });
-    await loadSessions();
-  };
+    await fetch(`/api/sessions?id=${id}`, { method: "DELETE" })
+    await loadSessions()
+  }
 
   const editSessionTitle = async (id: string, newTitle: string) => {
     await fetch("/api/sessions/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, title: newTitle }),
-    });
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
-  };
+    })
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s))
+  }
 
   const pinSession = async (id: string, isPinned: boolean) => {
     await fetch("/api/sessions/pin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, isPinned }),
-    });
-    setSessions(prev => prev.map(s => s.id === id ? { ...s, isPinned } : s));
-  };
+    })
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, isPinned } : s))
+  }
 
   const sendMessage = async (message: string, imageBase64?: string) => {
-    let id = activeId;
+    let id = activeId
     if (!id) {
-      const res = await fetch("/api/sessions", { method: "POST" });
-      const data = await res.json();
-      id = data.activeSessionId;
-      setActiveId(id);
-      setSessions(data.sessions);
+      const res = await fetch("/api/sessions", { method: "POST" })
+      const data = await res.json()
+      id = data.activeSessionId
+      setActiveId(id)
+      setSessions(data.sessions)
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
     await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        sessionId: id, 
-        message, 
+      body: JSON.stringify({
+        sessionId: id,
+        message,
         imageBase64,
-        model: selectedModel
+        model: selectedModel,
       }),
-    });
-    await loadSessions();
-    setIsLoading(false);
-  };
+    })
+    await loadSessions()
+    setIsLoading(false)
+  }
 
-  const activeSession = sessions.find(s => s.id === activeId);
+  const activeSession = sessions.find(s => s.id === activeId)
 
   const toggleDesktopSidebar = () => {
-    setDesktopSidebarOpen(!desktopSidebarOpen);
-  };
+    setDesktopSidebarOpen(!desktopSidebarOpen)
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a]">
@@ -179,7 +193,16 @@ export default function Home() {
             </h1>
           </div>
 
-          <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
+          <div className="flex items-center gap-2">
+            <ModelSelector selectedModel={selectedModel} onModelChange={setSelectedModel} />
+            <button
+              onClick={() => signOut()}
+              className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-[#1a1a1a] transition"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         {/* Messages */}
@@ -191,5 +214,5 @@ export default function Home() {
         <ChatInput onSend={sendMessage} isLoading={isLoading} />
       </div>
     </div>
-  );
+  )
 }
